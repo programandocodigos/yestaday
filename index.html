@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Box Fight 3D | Meme 67 Edition</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=Nosifer&display=swap"
+        rel="stylesheet">
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+          }
+        }
+    </script>
+</head>
+
+<body>
+    <div id="game-container">
+        <!-- HUD Principal -->
+        <header id="hud" class="glass">
+            <div id="left-hud">
+                <div id="game-title">BOX FIGHT 2026 <span id="phase-display">FASE 1</span> <span
+                        style="font-size: 0.6rem; color: #fbbf24; opacity: 0.5;">v2.0</span></div>
+                <div class="stat-item health-container">
+                    <span class="label">MOEDAS: <span id="coin-count" style="color: #fbbf24;">0</span></span>
+                </div>
+                <div class="stat-item health-container">
+                    <span class="label">SANGUE JOGADOR</span>
+                    <div class="health-bar">
+                        <div id="player-health-fill" class="health-fill"></div>
+                    </div>
+                </div>
+                <div class="stat-item ammo-hud">
+                    <span id="ammo-count">10</span> / <span id="total-ammo">30</span>
+                </div>
+            </div>
+
+            <!-- BARRA DO BOT NO TOPO DIREITO -->
+            <div id="right-hud">
+                <div class="stat-item bot-health-hud">
+                    <span class="label" style="color: #ff0000; text-align: right;">SANGUE DO BOT</span>
+                    <div class="health-bar bot-hb" style="background: #440000; border: 2px solid #ff0000;">
+                        <div id="bot-health-fill" class="health-fill" style="background: #00ff00; width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Mira -->
+        <div id="crosshair"></div>
+
+        <!-- Overlays -->
+        <div id="start-overlay" class="overlay">
+            <div class="content glass">
+                <h1>BOX FIGHT 3D</h1>
+                <p>O Humano voltou com mira ajustada. Sobreviva!</p>
+                <button id="start-btn" class="glow-btn">ENTRAR NA ARENA</button>
+            </div>
+        </div>
+
+        <div id="game-over-overlay" class="overlay hidden">
+            <div class="content glass">
+                <h1 class="blood-text blood-dripping">DERROTADO</h1>
+                <button id="retry-btn" class="glow-btn">REENTRAR</button>
+            </div>
+        </div>
+
+        <div id="pause-overlay" class="overlay hidden">
+            <div class="content glass">
+                <h1>PAUSADO</h1>
+                <p>O combate parou momentaneamente.</p>
+                <button id="resume-btn" class="glow-btn">VOLTAR AO COMBATE</button>
+            </div>
+        </div>
+
+        <div id="victory-overlay" class="overlay hidden">
+            <div class="content no-bg">
+                <h2 class="victory-text animate-bounce">VITÓRIA!</h2>
+                <p>Meme 67 Ativado... Você ganhou 50 moedas!</p>
+                <div class="victory-btns">
+                    <button id="next-phase-btn" class="glow-btn">PRÓXIMA FASE</button>
+                    <button id="shop-btn-vic" class="glow-btn" style="background: #22c55e;">LOJA</button>
+                    <button id="reset-btn" class="glow-btn" style="display: block; margin: 20px auto;">RECOMESSAR DO
+                        ZERO</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loja Overlay -->
+        <div id="shop-overlay" class="overlay hidden">
+            <div class="content glass shop-content">
+                <h1 class="shop-title" style="color: #fbbf24; font-size: 2.5rem; margin-bottom: 20px;">ARSENAL DE
+                    COMBATE</h1>
+                <div class="shop-items" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                    <div class="shop-item">
+                        <div class="weapon-preview" style="background-image: url('assets/pistol.png');"></div>
+                        <h3>PISTOLA</h3>
+                        <p>Precisão total</p>
+                        <button id="buy-pistol" class="glow-btn">EQUIPAR</button>
+                    </div>
+                    <div class="shop-item">
+                        <div class="weapon-preview" style="background-image: url('assets/rifle.png');"></div>
+                        <h3>RIFLE</h3>
+                        <p>Totalmente automático</p>
+                        <button id="buy-rifle" class="glow-btn">COMPRAR (50)</button>
+                    </div>
+                    <div class="shop-item">
+                        <div class="weapon-preview" style="background-image: url('assets/shotgun.png');"></div>
+                        <h3>ESCRAVOLTA</h3>
+                        <p>Dano em área</p>
+                        <button id="buy-shotgun" class="glow-btn">COMPRAR (80)</button>
+                    </div>
+                    <div class="shop-item">
+                        <div class="weapon-preview" style="background-image: url('assets/medkit.png');"></div>
+                        <h3>KIT MÉDICO</h3>
+                        <p>Recuperar HP</p>
+                        <button id="buy-medkit" class="glow-btn" style="background: #22c55e;">USAR (30)</button>
+                    </div>
+                </div>
+                <button id="close-shop" class="glow-btn"
+                    style="background: #ef4444; width: 100%; margin-top: 20px;">VOLTAR À BATALHA</button>
+            </div>
+        </div>
+
+        <!-- Áudio Meme 67 -->
+        <audio id="victory-audio">
+            <source src="assets/meme67.mp3" type="audio/mpeg">
+        </audio>
+    </div>
+
+    <script type="module" src="game.js"></script>
+</body>
+
+</html>
