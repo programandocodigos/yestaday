@@ -28,42 +28,29 @@ let isMouseDown = false;
 let lastFireTime = 0;
 const keys = {};
 
-// --- ÁUDIO (SFX) - SISTEMA SEGURO ---
-const BACKUP_SHOT = 'https://actions.google.com/sounds/v1/weapons/fire_arm_shot_long.ogg'; // Link estável
+// --- ÁUDIO (SFX) - SISTEMA SEGURO (UNIFICADO) ---
+const SOM_MAGNUM = 'https://cdn.pixabay.com/audio/2022/03/10/audio_783d10a102.mp3';
+const somTiro = new Audio(SOM_MAGNUM);
+const somVictory = document.getElementById('victory-audio'); 
 
-const somTiro = new Audio(BACKUP_SHOT);
-const somClick = new Audio(); // Placeholder
-const somReload = new Audio(); // Placeholder
-const somVictory = document.getElementById('victory-audio');
+let audioUnlocked = false;
 
 function playSfx(type) {
     try {
-        let target = null;
-        if (type === 'shot') target = somTiro;
-        
-        if (target && target.src) {
-            target.currentTime = 0;
-            const p = target.play();
-            if (p) p.catch(() => {});
+        if (type === 'shot' && somTiro) {
+            somTiro.currentTime = 0;
+            somTiro.play().catch(() => {});
         }
-    } catch (e) {
-        console.warn("Falha ao tocar som:", type);
-    }
+    } catch (e) { console.warn("Erro de áudio:", e); }
 }
 
 function unlockAudio() {
     if (audioUnlocked) return;
     try {
-        [somTiro].forEach(a => {
-            if (a.src) {
-                a.play().then(() => { a.pause(); a.currentTime = 0; }).catch(() => {});
-            }
-        });
+        somTiro.play().then(() => { somTiro.pause(); somTiro.currentTime = 0; }).catch(() => {});
     } catch(e) {}
     audioUnlocked = true;
 }
-
-let audioUnlocked = false;
 
 // --- SETUP THREE.JS ---
 const scene = new THREE.Scene();
@@ -387,24 +374,45 @@ function checkGameState() {
 }
 
 function resetGame(next = false) {
-    if (next) currentPhase++; else currentPhase = 1;
-    playerHp = 100;
+    if (next) {
+        currentPhase++;
+        // Persistência: HP e Moedas NÃO são resetados na próxima fase
+    } else {
+        currentPhase = 1;
+        playerHp = 100;
+        coins = 0; // Reset total se não for "próxima fase"
+    }
+    
     const stats = STATS.WEAPONS[currentWeapon];
     currentMag = stats.MAG;
     reserveAmmo = stats.TOTAL - stats.MAG;
     isReloading = false;
 
+    // Limpar Overlays
     document.querySelectorAll('.overlay').forEach(o => o.classList.add('hidden'));
     gameState = 'PLAYING';
+    
+    // Reset de Posição do Player mas garante que não trave
     camera.position.set(0, 1.7, 15);
-    generateMap();
+    camera.lookAt(0, 1.7, 0);
 
-    botsArray.forEach(b => scene.remove(b.group));
+    generateMap(); // Regen do mapa tático
+
+    // Limpar Bots Antigos
+    botsArray.forEach(b => {
+        if (b.group) scene.remove(b.group);
+    });
     botsArray = [];
-    const botCount = currentPhase === 1 ? 1 : 2;
-    for (let i = 0; i < botCount; i++) botsArray.push(new ArenaBot());
 
-    controls.lock();
+    // Spawn Dinâmico: Fase 1 = 1 Bot, Fase 2 ou mais = 2 Bots
+    const botCount = currentPhase === 1 ? 1 : 2;
+    console.log(`Iniciando Fase ${currentPhase} com ${botCount} bots.`);
+    
+    for (let i = 0; i < botCount; i++) {
+        botsArray.push(new ArenaBot());
+    }
+
+    if (!controls.isLocked) controls.lock();
     updateUI();
     updateWeaponModel();
 }
@@ -416,12 +424,14 @@ document.getElementById('shop-btn-vic').onclick = () => {
 document.getElementById('close-shop').onclick = () => {
     document.getElementById('shop-overlay').classList.add('hidden');
 };
-document.getElementById('buy-pistol').onclick = () => {
+document.getElementById('buy-pistol').onclick = (e) => {
+    e.stopPropagation();
     currentWeapon = 'MAGNUM';
-    resetGame(false); // Retoma na fase atual
+    resetGame(false); 
     document.getElementById('shop-overlay').classList.add('hidden');
 };
-document.getElementById('buy-rifle').onclick = () => {
+document.getElementById('buy-rifle').onclick = (e) => {
+    e.stopPropagation();
     if (coins >= 50 || currentWeapon === 'RIFLE') {
         if (currentWeapon !== 'RIFLE') coins -= 50;
         currentWeapon = 'RIFLE';
