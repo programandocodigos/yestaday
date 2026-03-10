@@ -19,8 +19,20 @@
         }
     </script>
     <style>
-        .weapon-preview { background-color: rgba(255, 255, 255, 0.1); border-radius: 8px; border: 1px dashed #555; display: flex; align-items: center; justify-content: center; color: #777; font-size: 0.8rem; }
-        .weapon-preview::after { content: 'IMAGE 404'; }
+        .weapon-preview {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border: 1px dashed #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #777;
+            font-size: 0.8rem;
+        }
+
+        .weapon-preview::after {
+            content: 'IMAGE 404';
+        }
     </style>
 </head>
 
@@ -45,12 +57,18 @@
                 </div>
             </div>
 
-            <!-- BARRA DO BOT NO TOPO DIREITO -->
+            <!-- BARRAS DOS BOTS NO TOPO DIREITO -->
             <div id="right-hud">
                 <div class="stat-item bot-health-hud">
-                    <span class="label" style="color: #ff0000; text-align: right;">SANGUE DO BOT</span>
-                    <div class="health-bar bot-hb" style="background: #440000; border: 2px solid #ff0000;">
-                        <div id="bot-health-fill" class="health-fill" style="background: #00ff00; width: 100%;"></div>
+                    <span class="label" style="color: #ff00ff; text-align: right;">BOT A</span>
+                    <div class="health-bar bot-hb">
+                        <div id="bot-health-fill-a" class="health-fill" style="background: #ff00ff; width: 100%;"></div>
+                    </div>
+                </div>
+                <div id="bot-b-container" class="stat-item bot-health-hud hidden">
+                    <span class="label" style="color: #ff00ff; text-align: right;">BOT B</span>
+                    <div class="health-bar bot-hb">
+                        <div id="bot-health-fill-b" class="health-fill" style="background: #ff00ff; width: 100%;"></div>
                     </div>
                 </div>
             </div>
@@ -58,6 +76,11 @@
 
         <!-- Mira -->
         <div id="crosshair"></div>
+
+        <!-- Countdown Overlay -->
+        <div id="countdown-overlay" class="hidden">
+            <span id="countdown-text">O COMBATE COMEÇA EM 5...</span>
+        </div>
 
         <!-- Overlays -->
         <div id="start-overlay" class="overlay">
