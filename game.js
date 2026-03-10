@@ -28,16 +28,17 @@ let isMouseDown = false;
 let lastFireTime = 0;
 const keys = {};
 
-// --- ÁUDIO (SFX) - SISTEMA SEGURO (UNIFICADO) ---
+// --- ÁUDIO (SFX) - SISTEMA SEGURO (MÁXIMA COMPATIBILIDADE) ---
 let somTiro;
 
 try {
-    // Link alternativo estável (Google Fire Arm)
-    const SHOT_URL = 'https://actions.google.com/sounds/v1/weapons/fire_arm_shot_long.ogg';
+    // Som de disparo (Link ultra-estável do acervo Wikimedia - MP3 público)
+    const SHOT_URL = 'https://upload.wikimedia.org/wikipedia/commons/4/4f/Gunshot_Sound.mp3';
     somTiro = new Audio(SHOT_URL);
-    somTiro.volume = 0.5;
+    somTiro.volume = 0.4;
+    somTiro.load();
 } catch (e) {
-    console.warn("Áudio não suportado");
+    console.warn("Sistema de áudio falhou, continuando em modo silencioso.");
 }
 
 let audioUnlocked = false;
@@ -536,6 +537,11 @@ function move() {
         }, 16);
     }
 }
+
+// EXPORTAR PARA GLOBAL (Evita RefErrors no Console)
+window.resetGame = resetGame;
+window.updateWeaponModel = updateWeaponModel;
+window.generateMap = generateMap;
 
 generateMap();
 updateWeaponModel();
