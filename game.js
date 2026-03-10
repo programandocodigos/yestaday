@@ -10,7 +10,7 @@ const STATS = {
         MAGNUM: { DAMAGE: 30, MAG: 10, TOTAL: 40, RATE: 400, AUTO: false, COLOR: 0x222222 },
         RIFLE: { DAMAGE: 15, MAG: 20, TOTAL: 80, RATE: 100, AUTO: true, COLOR: 0x444444 }
     },
-    BOT: { HP: 100, DAMAGE: 25, SPEED: 0.08, ACCURACY: 0.4, SPREAD: 0.25, REACTION: 700, STOP_DIST: 18, STRAFE_SPEED: 0.05, RADIUS: 1.5 }
+    BOT: { HP: 100, DAMAGE: 40, SPEED: 0.08, ACCURACY: 0.4, SPREAD: 0.25, REACTION: 700, STOP_DIST: 18, STRAFE_SPEED: 0.05, RADIUS: 1.5 }
 };
 
 // --- ESTADO GLOBAL ---
@@ -217,14 +217,41 @@ class ArenaBot {
         this.isPlayerVisible = false;
 
         const skin = new THREE.MeshStandardMaterial({ color: 0xe0ac69 });
-        const clothes = new THREE.MeshStandardMaterial({ color: 0x111111 });
+        const clothes = new THREE.MeshStandardMaterial({ color: 0x333333 }); // Cinza Metálico
+        
+        // Tronco
         this.torso = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.35), clothes);
         this.torso.position.y = 1.25;
+        this.torso.name = "bot-torso";
+        
+        // Cabeça
         this.head = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), skin);
         this.head.position.y = 1.9;
-        this.group.add(this.torso, this.head);
+        this.head.name = "bot-head";
+
+        // Pernas
+        const legGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.8);
+        this.legL = new THREE.Mesh(legGeo, clothes);
+        this.legL.position.set(-0.2, 0.4, 0);
+        this.legL.name = "bot-leg-l";
         
-        // BOT GIGANTE (2.5x maior para visibilidade)
+        this.legR = new THREE.Mesh(legGeo, clothes);
+        this.legR.position.set(0.2, 0.4, 0);
+        this.legR.name = "bot-leg-r";
+
+        // Braços
+        const armGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.7);
+        this.armL = new THREE.Mesh(armGeo, skin);
+        this.armL.position.set(-0.4, 1.3, 0);
+        this.armL.name = "bot-arm-l";
+
+        this.armR = new THREE.Mesh(armGeo, skin);
+        this.armR.position.set(0.4, 1.3, 0);
+        this.armR.name = "bot-arm-r";
+
+        this.group.add(this.torso, this.head, this.legL, this.legR, this.armL, this.armR);
+        
+        // BOT GIGANTE (Escala 2.5x)
         this.group.scale.set(2.5, 2.5, 2.5);
         
         scene.add(this.group);
@@ -258,7 +285,8 @@ class ArenaBot {
         this.group.quaternion.copy(startQ);
         this.group.quaternion.slerp(targetQ, 0.05);
 
-        const ray = new THREE.Raycaster(this.group.position.clone().add(new THREE.Vector3(0, 4.25, 0)), toPlayer); // Ajustado para altura gigante (1.7 * 2.5)
+        // Raycast de visão a partir da cabeça (y=1.9 * escala 2.5 = 4.75)
+        const ray = new THREE.Raycaster(this.group.position.clone().add(new THREE.Vector3(0, 4.75, 0)), toPlayer); 
         const inter = ray.intersectObjects(solidObjects, true);
         this.isPlayerVisible = (inter.length === 0 || inter[0].distance > dist);
 
