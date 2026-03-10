@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+import { PointerLockControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/PointerLockControls.js';
 
 console.log("BOX FIGHT 3D - EXPANSÃO FASE 2 + LOJA CARREGADA");
 
@@ -28,37 +28,42 @@ let isMouseDown = false;
 let lastFireTime = 0;
 const keys = {};
 
-// --- ÁUDIO (SFX) ---
-const somTiro = new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_783d10a102.mp3');
-const somClick = new Audio('assets/click.mp3');
-const somReload = new Audio('assets/reload.mp3');
+// --- ÁUDIO (SFX) - SISTEMA SEGURO ---
+const BACKUP_SHOT = 'https://actions.google.com/sounds/v1/weapons/fire_arm_shot_long.ogg'; // Link estável
+
+const somTiro = new Audio(BACKUP_SHOT);
+const somClick = new Audio(); // Placeholder
+const somReload = new Audio(); // Placeholder
 const somVictory = document.getElementById('victory-audio');
 
-somTiro.volume = 1.0;
-somClick.volume = 0.3;
-somReload.volume = 0.5;
-
-let audioUnlocked = false;
-
 function playSfx(type) {
-    let target = null;
-    if (type === 'shot') target = somTiro;
-    if (type === 'click') target = somClick;
-    if (type === 'reload') target = somReload;
-
-    if (target) {
-        target.currentTime = 0;
-        target.play().catch(() => { });
+    try {
+        let target = null;
+        if (type === 'shot') target = somTiro;
+        
+        if (target && target.src) {
+            target.currentTime = 0;
+            const p = target.play();
+            if (p) p.catch(() => {});
+        }
+    } catch (e) {
+        console.warn("Falha ao tocar som:", type);
     }
 }
 
 function unlockAudio() {
     if (audioUnlocked) return;
-    [somTiro, somClick, somReload].forEach(a => {
-        a.play().then(() => { a.pause(); a.currentTime = 0; }).catch(() => { });
-    });
+    try {
+        [somTiro].forEach(a => {
+            if (a.src) {
+                a.play().then(() => { a.pause(); a.currentTime = 0; }).catch(() => {});
+            }
+        });
+    } catch(e) {}
     audioUnlocked = true;
 }
+
+let audioUnlocked = false;
 
 // --- SETUP THREE.JS ---
 const scene = new THREE.Scene();
@@ -244,7 +249,7 @@ class ArenaBot {
         setTimeout(() => this.torso.material.color.set(0x111111), 100);
         if (this.hp <= 0) {
             this.group.visible = false;
-            coins += 50;
+            coins += 60; // 60 moedas conforme pedido
             updateUI();
             checkGameState();
         }
@@ -372,7 +377,11 @@ function checkGameState() {
     if (allDead && gameState === 'PLAYING') {
         gameState = 'VICTORY';
         document.getElementById('victory-overlay').classList.remove('hidden');
-        if (somVictory) somVictory.play().catch(() => { });
+        if (somVictory) {
+            try {
+                somVictory.play().catch(() => { });
+            } catch(e) {}
+        }
         controls.unlock();
     }
 }
@@ -453,20 +462,34 @@ function loop() {
 function move() {
     if (!controls.isLocked) return;
     isMoving = false;
-    const mv = new THREE.Vector3();
-    const f = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-    const r = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-    f.y = 0; r.y = 0; f.normalize(); r.normalize();
-    if (keys['KeyW']) mv.add(f);
-    if (keys['KeyS']) mv.sub(f);
-    if (keys['KeyA']) mv.sub(r);
-    if (keys['KeyD']) mv.add(r);
-    if (mv.length() > 0) {
-        const vel = mv.normalize().multiplyScalar(STATS.PLAYER.SPEED);
-        const nextPos = camera.position.clone().add(vel);
-        const pBox = new THREE.Box3().setFromCenterAndSize(nextPos, new THREE.Vector3(1, 2, 1));
-        if (!obstacleBoxes.some(b => b.intersectsBox(pBox))) {
-            camera.position.add(vel);
+    
+    const direction = new THREE.Vector3();
+    const front = new THREE.Vector3();
+    const right = new THREE.Vector3();
+
+    camera.getWorldDirection(front);
+    front.y = 0;
+    front.normalize();
+    
+    right.crossVectors(camera.up, front).normalize().negate();
+
+    if (keys['KeyW']) direction.add(front);
+    if (keys['KeyS']) direction.sub(front);
+    if (keys['KeyA']) direction.sub(right);
+    if (keys['KeyD']) direction.add(right);
+
+    if (direction.length() > 0) {
+        direction.normalize().multiplyScalar(STATS.PLAYER.SPEED);
+        
+        const nextPos = camera.position.clone().add(direction);
+        const pBox = new THREE.Box3().setFromCenterAndSize(
+            nextPos, 
+            new THREE.Vector3(STATS.PLAYER.RADIUS * 2, 2, STATS.PLAYER.RADIUS * 2)
+        );
+        
+        // Verifica colisão com obstáculos
+        if (!obstacleBoxes.some(box => box.intersectsBox(pBox))) {
+            camera.position.add(direction);
             isMoving = true;
         }
     }
