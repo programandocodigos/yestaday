@@ -29,25 +29,34 @@ let lastFireTime = 0;
 const keys = {};
 
 // --- ÁUDIO (SFX) - SISTEMA SEGURO (UNIFICADO) ---
-const SOM_MAGNUM = 'https://cdn.pixabay.com/audio/2022/03/10/audio_783d10a102.mp3';
-const somTiro = new Audio(SOM_MAGNUM);
-const somVictory = document.getElementById('victory-audio'); 
+const SOM_MAGNUM_URL = 'https://cdn.pixabay.com/audio/2022/03/10/audio_783d10a102.mp3';
+let somTiro;
+
+try {
+    somTiro = new Audio(SOM_MAGNUM_URL);
+    somTiro.load();
+} catch (e) {
+    console.warn("Áudio não suportado");
+}
 
 let audioUnlocked = false;
 
 function playSfx(type) {
-    try {
-        if (type === 'shot' && somTiro) {
-            somTiro.currentTime = 0;
-            somTiro.play().catch(() => {});
-        }
-    } catch (e) { console.warn("Erro de áudio:", e); }
+    if (type === 'shot' && somTiro) {
+        try {
+            const s = somTiro.cloneNode(); // Clone para permitir disparos rápidos
+            s.volume = 0.5;
+            s.play().catch(() => {});
+        } catch (e) {}
+    }
 }
 
 function unlockAudio() {
     if (audioUnlocked) return;
     try {
-        somTiro.play().then(() => { somTiro.pause(); somTiro.currentTime = 0; }).catch(() => {});
+        if (somTiro) {
+            somTiro.play().then(() => { somTiro.pause(); somTiro.currentTime = 0; }).catch(() => {});
+        }
     } catch(e) {}
     audioUnlocked = true;
 }
@@ -219,27 +228,28 @@ class ArenaBot {
         const skin = new THREE.MeshStandardMaterial({ color: 0xe0ac69 });
         const clothes = new THREE.MeshStandardMaterial({ color: 0x333333 }); // Cinza Metálico
         
-        // Tronco
-        this.torso = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.35), clothes);
-        this.torso.position.y = 1.25;
-        this.torso.name = "bot-torso";
-        
-        // Cabeça
-        this.head = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), skin);
-        this.head.position.y = 1.9;
-        this.head.name = "bot-head";
-
-        // Pernas
+        // Posição interna recalculada para o Bot nascer com os PÉS NO CHÃO (Pivot Y=0)
+        // Pernas (0 a 0.8)
         const legGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.8);
         this.legL = new THREE.Mesh(legGeo, clothes);
-        this.legL.position.set(-0.2, 0.4, 0);
+        this.legL.position.set(-0.2, 0.4, 0); 
         this.legL.name = "bot-leg-l";
         
         this.legR = new THREE.Mesh(legGeo, clothes);
         this.legR.position.set(0.2, 0.4, 0);
         this.legR.name = "bot-leg-r";
 
-        // Braços
+        // Tronco (0.8 a 1.7)
+        this.torso = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.35), clothes);
+        this.torso.position.y = 1.25; 
+        this.torso.name = "bot-torso";
+        
+        // Cabeça (1.7 a 2.1)
+        this.head = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), skin);
+        this.head.position.y = 1.9;
+        this.head.name = "bot-head";
+
+        // Braços (pendurados no tronco)
         const armGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.7);
         this.armL = new THREE.Mesh(armGeo, skin);
         this.armL.position.set(-0.4, 1.3, 0);
@@ -251,8 +261,9 @@ class ArenaBot {
 
         this.group.add(this.torso, this.head, this.legL, this.legR, this.armL, this.armR);
         
-        // BOT GIGANTE (Escala 2.5x)
+        // BOT GIGANTE (Escala 2.5x) - Base em Y=0
         this.group.scale.set(2.5, 2.5, 2.5);
+        this.group.position.y = 0; // Fixado no solo
         
         scene.add(this.group);
         this.respawn();
@@ -415,13 +426,14 @@ function checkGameState() {
 }
 
 function resetGame(next = false) {
+    if (!controls.isLocked) controls.lock();
+    
     if (next) {
         currentPhase++;
-        // Persistência: HP e Moedas NÃO são resetados na próxima fase
     } else {
         currentPhase = 1;
         playerHp = 100;
-        coins = 0; // Reset total se não for "próxima fase"
+        coins = 0;
     }
     
     const stats = STATS.WEAPONS[currentWeapon];
