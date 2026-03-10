@@ -79,10 +79,17 @@ document.getElementById('game-container').appendChild(renderer.domElement);
 const controls = new PointerLockControls(camera, document.body);
 
 // ILUMINAÇÃO
-scene.add(new THREE.HemisphereLight(0xffffff, 0x080820, 0.7));
-const sun = new THREE.DirectionalLight(0xffffff, 1.2);
-sun.position.set(20, 50, 10);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x080820, 0.5));
+const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+sun.position.set(10, 100, 10); // Quase no topo para sombras verticais
 sun.castShadow = true;
+// Expandir área de sombra para cobrir o mapa maior
+sun.shadow.camera.left = -100;
+sun.shadow.camera.right = 100;
+sun.shadow.camera.top = 100;
+sun.shadow.camera.bottom = -100;
+sun.shadow.mapSize.width = 2048;
+sun.shadow.mapSize.height = 2048;
 scene.add(sun);
 
 let solidObjects = [];
@@ -90,11 +97,18 @@ let obstacleBoxes = [];
 
 // --- 1. O MAPA ---
 function generateMap() {
+    // Limpar objetos antigos
     solidObjects.forEach(o => scene.remove(o));
-    solidObjects = []; obstacleBoxes = [];
+    solidObjects = []; 
+    obstacleBoxes = [];
 
-    const floorGeo = new THREE.PlaneGeometry(120, 120);
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0x1a401a });
+    // CHÃO (GRAMA REFINADA)
+    const floorGeo = new THREE.PlaneGeometry(500, 500);
+    const floorMat = new THREE.MeshStandardMaterial({ 
+        color: 0x1a331a, // Verde mais profundo
+        roughness: 0.8,
+        metalness: 0.1
+    });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
@@ -102,25 +116,57 @@ function generateMap() {
 
     const addSolid = (mesh, x, z, y = 0) => {
         mesh.position.set(x, y, z);
-        mesh.castShadow = true; mesh.receiveShadow = true;
+        mesh.castShadow = true; 
+        mesh.receiveShadow = true;
         scene.add(mesh);
         solidObjects.push(mesh);
-        obstacleBoxes.push(new THREE.Box3().setFromObject(mesh));
+        // Criar caixa de colisão precisa
+        const box = new THREE.Box3().setFromObject(mesh);
+        obstacleBoxes.push(box);
     };
 
-    // Obstáculos constantes
-    for (let i = 0; i < 20; i++) {
+    // ÁRVORES REAIS (Tronco + Esferas)
+    for (let i = 0; i < 30; i++) {
         const tree = new THREE.Group();
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 5), new THREE.MeshStandardMaterial({ color: 0x3d2b1f }));
-        trunk.position.y = 2.5;
-        const leaves = new THREE.Mesh(new THREE.ConeGeometry(2.5, 5, 8), new THREE.MeshStandardMaterial({ color: 0x0a5d0a }));
-        leaves.position.y = 6.5;
-        tree.add(trunk, leaves);
-        addSolid(tree, (Math.random() - 0.5) * 90, (Math.random() - 0.5) * 90);
+        
+        // Tronco
+        const trunk = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.5, 0.7, 6, 8), 
+            new THREE.MeshStandardMaterial({ color: 0x2d1b10 })
+        );
+        trunk.position.y = 3;
+        tree.add(trunk);
+
+        // Copa (Esferas sobrepostas)
+        const leafMat = new THREE.MeshStandardMaterial({ color: 0x1b4d1b });
+        const sphereCap1 = new THREE.Mesh(new THREE.SphereGeometry(2, 8, 8), leafMat);
+        sphereCap1.position.y = 5.5;
+        tree.add(sphereCap1);
+
+        const sphereCap2 = new THREE.Mesh(new THREE.SphereGeometry(1.5, 8, 8), leafMat);
+        sphereCap2.position.set(0.5, 7, 0.5);
+        tree.add(sphereCap2);
+
+        const sphereCap3 = new THREE.Mesh(new THREE.SphereGeometry(1.2, 8, 8), leafMat);
+        sphereCap3.position.set(-0.4, 7.5, -0.4);
+        tree.add(sphereCap3);
+
+        addSolid(tree, (Math.random() - 0.5) * 150, (Math.random() - 0.5) * 150);
     }
-    for (let i = 0; i < 15; i++) {
-        const stone = new THREE.Mesh(new THREE.BoxGeometry(4, 5 + Math.random() * 5, 4), new THREE.MeshStandardMaterial({ color: 0x555555 }));
-        addSolid(stone, (Math.random() - 0.5) * 80, (Math.random() - 0.5) * 80, 2.5);
+
+    // PEDRAS IRREGULARES (Dodecaedro)
+    for (let i = 0; i < 25; i++) {
+        const stoneSize = 2 + Math.random() * 4;
+        const stoneGeo = new THREE.DodecahedronGeometry(stoneSize, 0);
+        const stoneMat = new THREE.MeshStandardMaterial({ 
+            color: 0x333333,
+            roughness: 0.9
+        });
+        const stone = new THREE.Mesh(stoneGeo, stoneMat);
+        
+        // Posicionamento e rotação aleatória para realismo
+        stone.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        addSolid(stone, (Math.random() - 0.5) * 140, (Math.random() - 0.5) * 140, stoneSize * 0.5);
     }
 }
 
@@ -190,7 +236,7 @@ class ArenaBot {
     }
     respawn() {
         this.hp = 100; this.group.visible = true;
-        this.group.position.set((Math.random() - 0.5) * 40, 0, (Math.random() - 0.5) * 40 - 20);
+        this.group.position.set((Math.random() - 0.5) * 60, 0, (Math.random() - 0.5) * 60 - 20);
     }
     onHit(dmg) {
         this.hp -= dmg;
@@ -213,16 +259,28 @@ class ArenaBot {
         const inter = ray.intersectObjects(solidObjects, true);
         this.isPlayerVisible = (inter.length === 0 || inter[0].distance > dist);
 
+        // Movimento com colisão para o Bot
         if (dist > STATS.BOT.STOP_DIST || !this.isPlayerVisible) {
             const move = new THREE.Vector3(toPlayer.x, 0, toPlayer.z).multiplyScalar(STATS.BOT.SPEED);
-            this.group.position.add(move);
+            const nextBotPos = this.group.position.clone().add(move);
+            const bBox = new THREE.Box3().setFromCenterAndSize(nextBotPos, new THREE.Vector3(1, 2, 1));
+            
+            if (!obstacleBoxes.some(box => box.intersectsBox(bBox))) {
+                this.group.position.add(move);
+            }
         }
 
         if (Date.now() - this.lastStrafeChange > 1000 + Math.random() * 2000) {
             this.strafeDir *= -1; this.lastStrafeChange = Date.now();
         }
         const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), toPlayer).normalize();
-        this.group.position.add(right.multiplyScalar(this.strafeDir * STATS.BOT.STRAFE_SPEED));
+        const strafe = right.multiplyScalar(this.strafeDir * STATS.BOT.STRAFE_SPEED);
+        const nextStrafePos = this.group.position.clone().add(strafe);
+        const sBox = new THREE.Box3().setFromCenterAndSize(nextStrafePos, new THREE.Vector3(1, 2, 1));
+
+        if (!obstacleBoxes.some(box => box.intersectsBox(sBox))) {
+            this.group.position.add(strafe);
+        }
 
         if (this.isPlayerVisible && Date.now() - this.lastShot > 1000) {
             this.lastShot = Date.now();
