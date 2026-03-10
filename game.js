@@ -29,12 +29,13 @@ let lastFireTime = 0;
 const keys = {};
 
 // --- ÁUDIO (SFX) - SISTEMA SEGURO (UNIFICADO) ---
-const SOM_MAGNUM_URL = 'https://cdn.pixabay.com/audio/2022/03/10/audio_783d10a102.mp3';
 let somTiro;
 
 try {
-    somTiro = new Audio(SOM_MAGNUM_URL);
-    somTiro.load();
+    // Link alternativo estável (Google Fire Arm)
+    const SHOT_URL = 'https://actions.google.com/sounds/v1/weapons/fire_arm_shot_long.ogg';
+    somTiro = new Audio(SHOT_URL);
+    somTiro.volume = 0.5;
 } catch (e) {
     console.warn("Áudio não suportado");
 }
@@ -168,6 +169,48 @@ function generateMap() {
         // Posicionamento e rotação aleatória para realismo
         stone.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
         addSolid(stone, (Math.random() - 0.5) * 140, (Math.random() - 0.5) * 140, stoneSize * 0.5);
+    }
+}
+
+// --- 2. JOGADOR: ARSENAL ---
+const weaponGroup = new THREE.Group();
+camera.add(weaponGroup);
+
+function updateWeaponModel() {
+    weaponGroup.clear();
+    const stats = STATS.WEAPONS[currentWeapon];
+    const skin = new THREE.MeshStandardMaterial({ color: 0xe0ac69 });
+    const wood = new THREE.MeshStandardMaterial({ color: 0x3d2b1f });
+    const iron = new THREE.MeshStandardMaterial({ color: stats.COLOR, metalness: 0.8, roughness: 0.2 });
+
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 1.2), skin);
+    arm.position.set(0.6, -0.5, -0.5);
+    weaponGroup.add(arm);
+
+    if (currentWeapon === 'MAGNUM') {
+        const gun = new THREE.Group();
+        const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.6), iron);
+        barrel.position.z = -0.5;
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.2, 8), iron);
+        body.rotation.x = Math.PI / 2; body.position.z = -0.15;
+        const grip = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.25, 0.12), wood);
+        grip.position.set(0, -0.2, 0); grip.rotation.x = 0.3;
+        gun.add(barrel, body, grip);
+        gun.position.set(0.6, -0.35, -1.0);
+        weaponGroup.add(gun);
+    } else {
+        const rifle = new THREE.Group();
+        const mainBody = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 1.2), iron);
+        mainBody.position.z = -0.5;
+        const stock = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.25, 0.4), wood);
+        stock.position.set(0, -0.1, 0.2);
+        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.0), iron);
+        barrel.rotation.x = Math.PI / 2; barrel.position.z = -1.2;
+        const mag = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 0.2), iron);
+        mag.position.set(0, -0.3, -0.4); mag.rotation.x = 0.2;
+        rifle.add(mainBody, stock, barrel, mag);
+        rifle.position.set(0.6, -0.35, -1.0);
+        weaponGroup.add(rifle);
     }
 }
 
@@ -357,11 +400,6 @@ function checkGameState() {
     if (allDead && gameState === 'PLAYING') {
         gameState = 'VICTORY';
         document.getElementById('victory-overlay').classList.remove('hidden');
-        if (somVictory) {
-            try {
-                somVictory.play().catch(() => { });
-            } catch(e) {}
-        }
         controls.unlock();
     }
 }
