@@ -32,10 +32,10 @@ const keys = {};
 let somTiro;
 
 try {
-    // Som de disparo (Link ultra-estável do acervo Wikimedia - MP3 público)
-    const SHOT_URL = 'https://upload.wikimedia.org/wikipedia/commons/4/4f/Gunshot_Sound.mp3';
+    // Som de disparo (Link ultra-estável SoundJay)
+    const SHOT_URL = 'https://www.soundjay.com/mechanical/gun-gunshot-01.mp3';
     somTiro = new Audio(SHOT_URL);
-    somTiro.volume = 0.4;
+    somTiro.volume = 0.5;
     somTiro.load();
 } catch (e) {
     console.warn("Sistema de áudio falhou, continuando em modo silencioso.");
@@ -172,12 +172,14 @@ function generateMap() {
         addSolid(stone, (Math.random() - 0.5) * 140, (Math.random() - 0.5) * 140, stoneSize * 0.5);
     }
 }
+window.generateMap = generateMap;
 
 // --- 2. JOGADOR: ARSENAL ---
 const weaponGroup = new THREE.Group();
 camera.add(weaponGroup);
 
 function updateWeaponModel() {
+    if (!weaponGroup) return;
     weaponGroup.clear();
     const stats = STATS.WEAPONS[currentWeapon];
     const skin = new THREE.MeshStandardMaterial({ color: 0xe0ac69 });
@@ -214,6 +216,7 @@ function updateWeaponModel() {
         weaponGroup.add(rifle);
     }
 }
+window.updateWeaponModel = updateWeaponModel;
 
 // --- 3. BOT SISTEMA (Grounded Humanoid) ---
 class ArenaBot {
@@ -375,18 +378,22 @@ function handleReload() {
 
 function updateUI() {
     document.getElementById('player-health-fill').style.width = Math.max(0, playerHp) + '%';
+    document.getElementById('player-health-fill').style.backgroundColor = '#4ade80'; // Verde
     document.getElementById('coin-count').innerText = coins;
+    document.getElementById('coin-count').style.color = '#fbbf24'; // Dourado
     document.getElementById('ammo-count').innerText = currentMag;
     document.getElementById('total-ammo').innerText = reserveAmmo;
     document.getElementById('phase-display').innerText = `FASE ${currentPhase}`;
 
-    // HUD DIREITA (BOTS): Mostra a vida do bot mais próximo
+    // HUD DIREITA (BOTS): Rosa/Magenta
     const aliveBots = botsArray.filter(b => b.group.visible);
+    const botFill = document.getElementById('bot-health-fill');
     if (aliveBots.length > 0) {
         aliveBots.sort((a,b) => a.group.position.distanceTo(camera.position) - b.group.position.distanceTo(camera.position));
-        document.getElementById('bot-health-fill').style.width = aliveBots[0].hp + '%';
+        botFill.style.width = aliveBots[0].hp + '%';
+        botFill.style.backgroundColor = '#ff00ff'; // Magenta/Rosa
     } else {
-        document.getElementById('bot-health-fill').style.width = '0%';
+        botFill.style.width = '0%';
     }
 }
 
@@ -441,6 +448,7 @@ function resetGame(next = false) {
     updateUI();
     updateWeaponModel();
 }
+window.resetGame = resetGame;
 
 // LOJA LOGIC
 document.getElementById('shop-btn-vic').onclick = () => {
@@ -538,11 +546,14 @@ function move() {
     }
 }
 
-// EXPORTAR PARA GLOBAL (Evita RefErrors no Console)
-window.resetGame = resetGame;
-window.updateWeaponModel = updateWeaponModel;
-window.generateMap = generateMap;
-
-generateMap();
-updateWeaponModel();
-loop();
+// --- INICIALIZAÇÃO SEGURA ---
+try {
+    generateMap();
+    updateWeaponModel();
+    loop();
+    console.log("GAME ENGINE STARTED SUCCESSFULLY");
+} catch (e) {
+    console.error("CRITICAL ENGINE ERROR:", e);
+    // Tenta forçar o loop mesmo em erro para evitar tela preta
+    if (typeof loop === 'function') loop();
+}
