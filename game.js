@@ -10,7 +10,7 @@ const STATS = {
         MAGNUM: { DAMAGE: 30, MAG: 10, TOTAL: 40, RATE: 400, AUTO: false, COLOR: 0x222222 },
         RIFLE: { DAMAGE: 15, MAG: 20, TOTAL: 80, RATE: 100, AUTO: true, COLOR: 0x444444 }
     },
-    BOT: { HP: 100, DAMAGE: 40, SPEED: 0.1, ACCURACY: 0.55, SPREAD: 0.035, REACTION: 500, STOP_DIST: 12, STRAFE_SPEED: 0.06, RADIUS: 0.7 }
+    BOT: { HP: 100, DAMAGE: 25, SPEED: 0.08, ACCURACY: 0.4, SPREAD: 0.25, REACTION: 700, STOP_DIST: 18, STRAFE_SPEED: 0.05, RADIUS: 1.5 }
 };
 
 // --- ESTADO GLOBAL ---
@@ -223,6 +223,10 @@ class ArenaBot {
         this.head = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), skin);
         this.head.position.y = 1.9;
         this.group.add(this.torso, this.head);
+        
+        // BOT GIGANTE (2.5x maior para visibilidade)
+        this.group.scale.set(2.5, 2.5, 2.5);
+        
         scene.add(this.group);
         this.respawn();
     }
@@ -245,9 +249,16 @@ class ArenaBot {
         if (!this.group.visible || gameState !== 'PLAYING') return;
         const dist = this.group.position.distanceTo(camera.position);
         const toPlayer = new THREE.Vector3().subVectors(camera.position, this.group.position).normalize();
-        this.group.lookAt(camera.position.x, 0, camera.position.z);
+        
+        // Rotação Suave (NERF DE MIRA - Slerp 0.05 para atraso de focar)
+        const lookTarget = new THREE.Vector3(camera.position.x, this.group.position.y, camera.position.z);
+        const startQ = this.group.quaternion.clone();
+        this.group.lookAt(lookTarget);
+        const targetQ = this.group.quaternion.clone();
+        this.group.quaternion.copy(startQ);
+        this.group.quaternion.slerp(targetQ, 0.05);
 
-        const ray = new THREE.Raycaster(this.group.position.clone().add(new THREE.Vector3(0, 1.7, 0)), toPlayer);
+        const ray = new THREE.Raycaster(this.group.position.clone().add(new THREE.Vector3(0, 4.25, 0)), toPlayer); // Ajustado para altura gigante (1.7 * 2.5)
         const inter = ray.intersectObjects(solidObjects, true);
         this.isPlayerVisible = (inter.length === 0 || inter[0].distance > dist);
 
@@ -274,9 +285,11 @@ class ArenaBot {
             this.group.position.add(strafe);
         }
 
-        if (this.isPlayerVisible && Date.now() - this.lastShot > 1000) {
+        if (this.isPlayerVisible && Date.now() - this.lastShot > 1500) {
             this.lastShot = Date.now();
-            if (Math.random() < STATS.BOT.ACCURACY) {
+            // Spread e Erro: Se o jogador estiver se movendo, a chance cai drasticamente
+            const movementPenalty = isMoving ? 0.3 : 1.0;
+            if (Math.random() < (STATS.BOT.ACCURACY * movementPenalty)) {
                 playerHp -= STATS.BOT.DAMAGE;
                 updateUI();
                 checkGameState();
