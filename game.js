@@ -171,50 +171,7 @@ function generateMap() {
     }
 }
 
-// --- 2. JOGADOR: ARSENAL ---
-const weaponGroup = new THREE.Group();
-camera.add(weaponGroup);
-
-function updateWeaponModel() {
-    weaponGroup.clear();
-    const stats = STATS.WEAPONS[currentWeapon];
-    const skin = new THREE.MeshStandardMaterial({ color: 0xe0ac69 });
-    const wood = new THREE.MeshStandardMaterial({ color: 0x3d2b1f });
-    const iron = new THREE.MeshStandardMaterial({ color: stats.COLOR, metalness: 0.8, roughness: 0.2 });
-
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 1.2), skin);
-    arm.position.set(0.6, -0.5, -0.5);
-    weaponGroup.add(arm);
-
-    if (currentWeapon === 'MAGNUM') {
-        const gun = new THREE.Group();
-        const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.6), iron);
-        barrel.position.z = -0.5;
-        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.2, 8), iron);
-        body.rotation.x = Math.PI / 2; body.position.z = -0.15;
-        const grip = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.25, 0.12), wood);
-        grip.position.set(0, -0.2, 0); grip.rotation.x = 0.3;
-        gun.add(barrel, body, grip);
-        gun.position.set(0.6, -0.35, -1.0);
-        weaponGroup.add(gun);
-    } else {
-        // RIFLE
-        const rifle = new THREE.Group();
-        const mainBody = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 1.2), iron);
-        mainBody.position.z = -0.5;
-        const stock = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.25, 0.4), wood);
-        stock.position.set(0, -0.1, 0.2);
-        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.0), iron);
-        barrel.rotation.x = Math.PI / 2; barrel.position.z = -1.2;
-        const mag = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 0.2), iron);
-        mag.position.set(0, -0.3, -0.4); mag.rotation.x = 0.2;
-        rifle.add(mainBody, stock, barrel, mag);
-        rifle.position.set(0.6, -0.35, -1.0);
-        weaponGroup.add(rifle);
-    }
-}
-
-// --- 3. BOT SISTEMA ---
+// --- 3. BOT SISTEMA (Grounded Humanoid) ---
 class ArenaBot {
     constructor() {
         this.group = new THREE.Group();
@@ -222,63 +179,50 @@ class ArenaBot {
         this.lastShot = 0;
         this.strafeDir = Math.random() < 0.5 ? 1 : -1;
         this.lastStrafeChange = 0;
-        this.lastVisibleTime = 0;
         this.isPlayerVisible = false;
 
         const skin = new THREE.MeshStandardMaterial({ color: 0xe0ac69 });
         const clothes = new THREE.MeshStandardMaterial({ color: 0x333333 }); // Cinza Metálico
         
-        // Posição interna recalculada para o Bot nascer com os PÉS NO CHÃO (Pivot Y=0)
-        // Pernas (0 a 0.8)
+        // Posição interna: base dos pés em y=0
         const legGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.8);
         this.legL = new THREE.Mesh(legGeo, clothes);
         this.legL.position.set(-0.2, 0.4, 0); 
-        this.legL.name = "bot-leg-l";
         
         this.legR = new THREE.Mesh(legGeo, clothes);
         this.legR.position.set(0.2, 0.4, 0);
-        this.legR.name = "bot-leg-r";
 
-        // Tronco (0.8 a 1.7)
         this.torso = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.35), clothes);
         this.torso.position.y = 1.25; 
-        this.torso.name = "bot-torso";
         
-        // Cabeça (1.7 a 2.1)
         this.head = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), skin);
         this.head.position.y = 1.9;
-        this.head.name = "bot-head";
 
-        // Braços (pendurados no tronco)
         const armGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.7);
         this.armL = new THREE.Mesh(armGeo, skin);
         this.armL.position.set(-0.4, 1.3, 0);
-        this.armL.name = "bot-arm-l";
 
         this.armR = new THREE.Mesh(armGeo, skin);
         this.armR.position.set(0.4, 1.3, 0);
-        this.armR.name = "bot-arm-r";
 
         this.group.add(this.torso, this.head, this.legL, this.legR, this.armL, this.armR);
-        
-        // BOT GIGANTE (Escala 2.5x) - Base em Y=0
-        this.group.scale.set(2.5, 2.5, 2.5);
-        this.group.position.y = 0; // Fixado no solo
+        this.group.scale.set(2.5, 2.5, 2.5); // BOT GIGANTE
         
         scene.add(this.group);
         this.respawn();
     }
     respawn() {
         this.hp = 100; this.group.visible = true;
-        this.group.position.set((Math.random() - 0.5) * 60, 0, (Math.random() - 0.5) * 60 - 20);
+        this.group.position.set((Math.random() - 0.5) * 80, 0, (Math.random() - 0.5) * 80 - 20);
+        this.group.position.y = 0; // TRAVADO NO CHÃO
     }
     onHit(dmg) {
         this.hp -= dmg;
         this.torso.material.color.set(0xff0000);
-        setTimeout(() => this.torso.material.color.set(0x111111), 100);
+        setTimeout(() => this.torso.material.color.set(0x333333), 100);
         if (this.hp <= 0) {
             this.group.visible = false;
-            coins += 60; // 60 moedas conforme pedido
+            coins += 60; // 60 Moedas por vitória
             updateUI();
             checkGameState();
         }
@@ -288,47 +232,42 @@ class ArenaBot {
         const dist = this.group.position.distanceTo(camera.position);
         const toPlayer = new THREE.Vector3().subVectors(camera.position, this.group.position).normalize();
         
-        // Rotação Suave (NERF DE MIRA - Slerp 0.05 para atraso de focar)
-        const lookTarget = new THREE.Vector3(camera.position.x, this.group.position.y, camera.position.z);
+        // Mira Humana (NERF: Rotação suave com Slerp)
+        const lookTarget = new THREE.Vector3(camera.position.x, 0, camera.position.z);
         const startQ = this.group.quaternion.clone();
         this.group.lookAt(lookTarget);
         const targetQ = this.group.quaternion.clone();
         this.group.quaternion.copy(startQ);
-        this.group.quaternion.slerp(targetQ, 0.05);
+        this.group.quaternion.slerp(targetQ, 0.04);
 
-        // Raycast de visão a partir da cabeça (y=1.9 * escala 2.5 = 4.75)
-        const ray = new THREE.Raycaster(this.group.position.clone().add(new THREE.Vector3(0, 4.75, 0)), toPlayer); 
+        // Visibilidade (Altura gigante)
+        const ray = new THREE.Raycaster(this.group.position.clone().add(new THREE.Vector3(0, 4.5, 0)), toPlayer); 
         const inter = ray.intersectObjects(solidObjects, true);
         this.isPlayerVisible = (inter.length === 0 || inter[0].distance > dist);
 
-        // Movimento com colisão para o Bot
+        // Movimento com colisão
         if (dist > STATS.BOT.STOP_DIST || !this.isPlayerVisible) {
             const move = new THREE.Vector3(toPlayer.x, 0, toPlayer.z).multiplyScalar(STATS.BOT.SPEED);
             const nextBotPos = this.group.position.clone().add(move);
-            const bBox = new THREE.Box3().setFromCenterAndSize(nextBotPos, new THREE.Vector3(1, 2, 1));
-            
+            const bBox = new THREE.Box3().setFromCenterAndSize(nextBotPos, new THREE.Vector3(2, 5, 2));
             if (!obstacleBoxes.some(box => box.intersectsBox(bBox))) {
                 this.group.position.add(move);
             }
         }
+        this.group.position.y = 0; // Fixação absoluta no solo
 
-        if (Date.now() - this.lastStrafeChange > 1000 + Math.random() * 2000) {
+        // Strafe lateral
+        if (Date.now() - this.lastStrafeChange > 1500) {
             this.strafeDir *= -1; this.lastStrafeChange = Date.now();
         }
         const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), toPlayer).normalize();
-        const strafe = right.multiplyScalar(this.strafeDir * STATS.BOT.STRAFE_SPEED);
-        const nextStrafePos = this.group.position.clone().add(strafe);
-        const sBox = new THREE.Box3().setFromCenterAndSize(nextStrafePos, new THREE.Vector3(1, 2, 1));
+        this.group.position.add(right.multiplyScalar(this.strafeDir * STATS.BOT.STRAFE_SPEED));
 
-        if (!obstacleBoxes.some(box => box.intersectsBox(sBox))) {
-            this.group.position.add(strafe);
-        }
-
+        // Tiro Errático (NERF: Spread 60% e intervalo 1.5s)
         if (this.isPlayerVisible && Date.now() - this.lastShot > 1500) {
             this.lastShot = Date.now();
-            // Spread e Erro: Se o jogador estiver se movendo, a chance cai drasticamente
-            const movementPenalty = isMoving ? 0.3 : 1.0;
-            if (Math.random() < (STATS.BOT.ACCURACY * movementPenalty)) {
+            const accuracy = isMoving ? 0.2 : 0.4; // Penalidade se o jogador correr
+            if (Math.random() < accuracy) {
                 playerHp -= STATS.BOT.DAMAGE;
                 updateUI();
                 checkGameState();
@@ -397,9 +336,11 @@ function updateUI() {
     document.getElementById('total-ammo').innerText = reserveAmmo;
     document.getElementById('phase-display').innerText = `FASE ${currentPhase}`;
 
-    const aliveBot = botsArray.find(b => b.group.visible);
-    if (aliveBot) {
-        document.getElementById('bot-health-fill').style.width = aliveBot.hp + '%';
+    // HUD DIREITA (BOTS): Mostra a vida do bot mais próximo
+    const aliveBots = botsArray.filter(b => b.group.visible);
+    if (aliveBots.length > 0) {
+        aliveBots.sort((a,b) => a.group.position.distanceTo(camera.position) - b.group.position.distanceTo(camera.position));
+        document.getElementById('bot-health-fill').style.width = aliveBots[0].hp + '%';
     } else {
         document.getElementById('bot-health-fill').style.width = '0%';
     }
@@ -426,8 +367,6 @@ function checkGameState() {
 }
 
 function resetGame(next = false) {
-    if (!controls.isLocked) controls.lock();
-    
     if (next) {
         currentPhase++;
     } else {
@@ -436,36 +375,30 @@ function resetGame(next = false) {
         coins = 0;
     }
     
-    const stats = STATS.WEAPONS[currentWeapon];
-    currentMag = stats.MAG;
-    reserveAmmo = stats.TOTAL - stats.MAG;
-    isReloading = false;
-
-    // Limpar Overlays
-    document.querySelectorAll('.overlay').forEach(o => o.classList.add('hidden'));
     gameState = 'PLAYING';
+    isReloading = false;
+    currentMag = STATS.WEAPONS[currentWeapon].MAG;
+    reserveAmmo = STATS.WEAPONS[currentWeapon].TOTAL - currentMag;
+
+    document.querySelectorAll('.overlay').forEach(o => o.classList.add('hidden'));
     
-    // Reset de Posição do Player mas garante que não trave
+    // Posicionamento Inicial
     camera.position.set(0, 1.7, 15);
     camera.lookAt(0, 1.7, 0);
 
-    generateMap(); // Regen do mapa tático
+    generateMap(); 
 
-    // Limpar Bots Antigos
-    botsArray.forEach(b => {
-        if (b.group) scene.remove(b.group);
-    });
+    // Limpeza de bots antigos
+    botsArray.forEach(b => { if (b.group) scene.remove(b.group); });
     botsArray = [];
 
-    // Spawn Dinâmico: Fase 1 = 1 Bot, Fase 2 ou mais = 2 Bots
+    // Spawn por Fase (Fase 1: 1 bot | Fase 2+: 2 bots)
     const botCount = currentPhase === 1 ? 1 : 2;
-    console.log(`Iniciando Fase ${currentPhase} com ${botCount} bots.`);
-    
     for (let i = 0; i < botCount; i++) {
         botsArray.push(new ArenaBot());
     }
 
-    if (!controls.isLocked) controls.lock();
+    if (controls) controls.lock();
     updateUI();
     updateWeaponModel();
 }
